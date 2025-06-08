@@ -2,7 +2,9 @@ import express, { Application, Request, Response, NextFunction } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
+import session from "express-session";
 import authRoutes from "./routes/auth";
+import githubRoutes from "./routes/github";
 import { verifyToken } from "./middleware/verifyToken";
 
 dotenv.config();
@@ -10,34 +12,56 @@ dotenv.config();
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// Configure CORS to allow credentials from your frontend
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+  })
+);
+
+// Setup sessions for OAuth login tracking
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "change_this_secret",
+    resave: false,
+    saveUninitialized: false,
+  })
+);
+
+// Parse JSON bodies
 app.use(express.json());
 
-// Middleware to skip verifyToken on /login and /register
+// Mount GitHub OAuth routes (no JWT required)
+app.use(githubRoutes);
+
+// Middleware to skip verifyToken on login and register
 const jwtMiddleware = (
   req: Request,
   res: Response,
   next: NextFunction
 ): void => {
-  // Allow unauthenticated access to these paths
   if (req.path === "/login" || req.path === "/register") {
     next();
     return;
   }
-  // Otherwise verify token
   verifyToken(req, res, next);
 };
 
-// Apply the middleware and then routes
+// Mount protected auth routes under /api
 app.use("/api", jwtMiddleware, authRoutes);
 
-// Optional health check route (no auth needed)
+// Health check (protected)
 app.get("/health", verifyToken, (req: Request, res: Response): void => {
   res.json({ status: "Server is running" });
 });
 
+// MongoDB connection
+const uri = process.env.MONGO_URI;
+if (!uri) throw new Error("MONGO_URI must be set in .env");
+
 mongoose
-  .connect(process.env.MONGO_URI!)
+  .connect(uri)
   .then(() => {
     console.log("✅ Connected to MongoDB");
     app.listen(PORT, () => {
