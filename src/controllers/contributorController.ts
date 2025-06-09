@@ -39,6 +39,9 @@ export class ContributorController {
         res.status(200).json({
           success: true,
           message: "Repository analysis retrieved from cache",
+          userId,
+          githubUsername,
+          fromCache: true,
           data: {
             repositories: existingAnalysis.repositories,
             languageStats: Object.fromEntries(existingAnalysis.languageStats),

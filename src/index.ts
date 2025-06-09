@@ -50,31 +50,6 @@ app.use("/", authRoutes);
 
 app.use("/api/contributor", contributorRoutes);
 
-app.use("*", (req: Request, res: Response): void => {
-  res.status(404).json({
-    success: false,
-    message: "Route not found",
-    path: req.originalUrl,
-  });
-});
-
-app.use(
-  (
-    error: any,
-    req: express.Request,
-    res: express.Response,
-    next: express.NextFunction
-  ) => {
-    console.error("Global error handler:", error);
-
-    res.status(error.status || 500).json({
-      success: false,
-      message: error.message || "Internal server error",
-      ...(process.env.NODE_ENV === "development" && { stack: error.stack }),
-    });
-  }
-);
-
 //db connection function
 const connectDB = async (): Promise<void> => {
   try {
