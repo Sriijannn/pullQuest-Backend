@@ -4,12 +4,17 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import authRoutes from "./routes/auth";
 import { verifyToken } from "./middleware/verifyToken";
+import helmet from "helmet";
+
+import contributorRoutes from "./routes/contributorRoutes";
+import { githubApiRateLimit } from "./middleware/rateLimitMiddleware";
 
 dotenv.config();
 
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
 
+app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
@@ -29,21 +34,75 @@ const jwtMiddleware = (
 };
 
 // Apply the middleware and then routes
-app.use("/api", jwtMiddleware, authRoutes);
+app.use("/api", githubApiRateLimit);
 
 // Optional health check route (no auth needed)
-app.get("/health", verifyToken, (req: Request, res: Response): void => {
-  res.json({ status: "Server is running" });
+app.get("/health", (req: Request, res: Response): void => {
+  res.status(200).json({
+    success: true,
+    message: "Server is running",
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || "development",
+  });
 });
 
-mongoose
-  .connect(process.env.MONGO_URI!)
-  .then(() => {
-    console.log("✅ Connected to MongoDB");
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running at http://localhost:${PORT}`);
-    });
-  })
-  .catch((err) => {
-    console.error("❌ DB connection error:", err);
+app.use("/api/contributor", contributorRoutes);
+
+app.use("*", (req: Request, res: Response): void => {
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+    path: req.originalUrl,
   });
+});
+
+app.use(
+  (
+    error: any,
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
+    console.error("Global error handler:", error);
+
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Internal server error",
+      ...(process.env.NODE_ENV === "development" && { stack: error.stack }),
+    });
+  }
+);
+
+//db connection function
+const connectDB = async (): Promise<void> => {
+  try {
+    const mongoURI = process.env.MONGODB_URI;
+    if (!mongoURI) {
+      throw new Error("MONGODB_URI not found in environment variables");
+    }
+
+    await mongoose.connect(mongoURI);
+    console.log("✅ MongoDB connected successfully");
+  } catch (error: any) {
+    console.error("❌ MongoDB connection failed:", error.message);
+    process.exit(1);
+  }
+};
+
+// Start server
+const startServer = async (): Promise<void> => {
+  try {
+    await connectDB();
+
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`📊 Health check: http://localhost:${PORT}/health`);
+      console.log(`🔧 Environment: ${process.env.NODE_ENV || "development"}`);
+    });
+  } catch (error: any) {
+    console.error("Failed to start server:", error.message);
+    process.exit(1);
+  }
+};
+
+startServer();
