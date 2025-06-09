@@ -437,6 +437,72 @@ export class ContributorController {
           },
         },
       });
-    } catch (error: any) {}
+    } catch (error: any) {
+      console.error("Error updating issue filters:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update issue filter",
+        error: error.message,
+      });
+    }
+  };
+
+  /**
+   * Get detailed information about a specific issue
+   */
+  public getIssueDetails = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const { issueId } = req.params;
+      const { userId, githubUsername } = req.body;
+
+      if (!issueId) {
+        res.status(400).json({
+          success: false,
+          message: "Issue ID is required",
+        });
+        return;
+      }
+
+      // First, try to find the issue in our cached data
+      const cachedIssues = await GitHubIssues.findOne({
+        userId,
+        githubUsername,
+      });
+
+      if (cachedIssues) {
+        const issue = cachedIssues.suggestedIssues.find(
+          (issue) => issue.id.toString() === issueId
+        );
+
+        if (issue) {
+          res.status(200).json({
+            success: true,
+            message: "Issue details retrieved successfully",
+            data: {
+              issue,
+              fromCache: true,
+            },
+          });
+          return;
+        }
+      }
+
+      // If not found in cache, try to fetch from GitHub API
+      // This would require parsing the issue URL or having additional context
+      res.status(404).json({
+        success: false,
+        message: "Issue not found in cached data",
+      });
+    } catch (error: any) {
+      console.error("Error fetching issue details:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch issue details",
+        error: error.message,
+      });
+    }
   };
 }

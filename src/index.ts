@@ -46,6 +46,8 @@ app.get("/health", (req: Request, res: Response): void => {
   });
 });
 
+app.use("/", authRoutes);
+
 app.use("/api/contributor", contributorRoutes);
 
 app.use("*", (req: Request, res: Response): void => {
@@ -76,9 +78,9 @@ app.use(
 //db connection function
 const connectDB = async (): Promise<void> => {
   try {
-    const mongoURI = process.env.MONGODB_URI;
+    const mongoURI = process.env.MONGO_URI;
     if (!mongoURI) {
-      throw new Error("MONGODB_URI not found in environment variables");
+      throw new Error("MONGO_URI not found in environment variables");
     }
 
     await mongoose.connect(mongoURI);
