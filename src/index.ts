@@ -5,6 +5,9 @@ import mongoose from "mongoose";
 import authRoutes from "./routes/auth";
 import { verifyToken } from "./middleware/verifyToken";
 import helmet from "helmet";
+import session from "express-session";
+import passport from "passport";
+import "./auth/github";
 
 import contributorRoutes from "./routes/contributorRoutes";
 import { githubApiRateLimit } from "./middleware/rateLimitMiddleware";
@@ -17,6 +20,15 @@ const PORT = process.env.PORT || 5000;
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+app.use(
+  session({
+    secret: "pullquestby4anus",
+    resave: false,
+    saveUninitialized: false,
+  })
+);
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Middleware to skip verifyToken on /login and /register
 const jwtMiddleware = (
@@ -32,6 +44,26 @@ const jwtMiddleware = (
   // Otherwise verify token
   verifyToken(req, res, next);
 };
+
+// Start GitHub OAuth flow
+app.get(
+  "/auth/github",
+  passport.authenticate("github", { scope: ["user:email"] })
+);
+
+// GitHub OAuth callback
+app.get(
+  "/auth/github/callback",
+  passport.authenticate("github", { failureRedirect: "/" }),
+  (req, res) => {
+    res.redirect(`http://localhost:5173?user=${JSON.stringify(req.user)}`);
+  }
+);
+
+// Optional: route to get user info
+app.get("/api/user", (req, res) => {
+  res.json(req.user || null);
+});
 
 // Apply the middleware and then routes
 app.use("/api", githubApiRateLimit);
