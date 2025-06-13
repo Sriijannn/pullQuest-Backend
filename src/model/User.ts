@@ -4,6 +4,7 @@ export interface IUser extends Document {
   email: string;
   password: string;
   role: "contributor" | "maintainer" | "company";
+  githubUsername?: string;
 }
 
 const userSchema = new Schema<IUser>({
@@ -13,6 +14,12 @@ const userSchema = new Schema<IUser>({
     type: String,
     required: true,
     enum: ["contributor", "maintainer", "company"],
+  },
+  githubUsername: {
+    type: String,
+    required: function (this: IUser) {
+      return this.role === "contributor" || this.role === "maintainer";
+    },
   },
 });
 

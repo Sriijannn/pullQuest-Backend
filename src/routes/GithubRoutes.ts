@@ -2,6 +2,9 @@ import { Router } from "express";
 import fetch from "node-fetch";
 import session from "express-session";
 import { Request, Response, NextFunction } from "express";
+import { GitHubOrganizationsService, IOrganization } from "../services/githubService";
+
+const orgService = new GitHubOrganizationsService(process.env.GITHUB_TOKEN);
 
 // extend session type
 declare module "express-session" {
@@ -15,6 +18,27 @@ declare module "express-session" {
 }
 
 const router = Router();
+
+router.get("/github/orgs/:username", async (req, res, next) => {
+  try {
+    const { username } = req.params
+    const orgs: IOrganization[] = await orgService.getUserOrganizations(username)
+    res.json(orgs)
+  } catch (err) {
+    next(err)
+  }
+})
+
+// 2️⃣ Fetch all (public+private) orgs for *your* token
+router.get("/github/orgs", async (req, res, next) => {
+  try {
+    // no username → uses /user/orgs under the hood
+    const orgs: IOrganization[] = await orgService.getUserOrganizations()
+    res.json(orgs)
+  } catch (err) {
+    next(err)
+  }
+})
 
 // Initiate GitHub OAuth flow
 router.get(
@@ -35,7 +59,7 @@ router.get(
 
 // Handle callback
 router.get(
-  "/oauth/callback",
+  "/auth/callback/github",
   (req: Request, res: Response, next: NextFunction): void => {
     try {
       const code = req.query.code as string;
@@ -91,13 +115,6 @@ router.get(
   }
 );
 
-router.get("/api/me", (req: Request, res: Response, next: NextFunction) => {
-    if (!req.session.user) {
-      res.status(401).json({ error: "Not logged in" });
-      return;
-    }
-    res.json(req.session.user);
-  });
-  
+
 
 export default router;
