@@ -2,6 +2,23 @@ import axios, { AxiosResponse } from "axios";
 import { IRepository, ILanguageStats } from "../model/githubRepositories";
 import { IIssue } from "../model/githubIssues";
 
+export interface IOrganization {
+  id: number;
+  login: string;
+  name: string | null;
+  description: string | null;
+  htmlUrl: string;
+  url: string;
+  reposUrl: string;
+  eventsUrl: string;
+  membersUrl: string;
+  publicMembersUrl: string;
+  avatarUrl: string;
+  isVerified: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export class GitHubService {
   private readonly baseURL = "https://api.github.com";
   private readonly token?: string;
@@ -384,5 +401,62 @@ export class GitHubService {
     } else {
       return Math.random() * 20 + 12; // 12-32 hours
     }
+  }
+}
+
+// services/githubService.ts
+export class GitHubOrganizationsService {
+  private readonly baseURL = 'https://api.github.com'
+  private readonly token?: string
+
+  constructor(token?: string) {
+    this.token = token
+  }
+
+  private getHeaders() {
+    const headers: Record<string, string> = {
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    }
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`
+    }
+    return headers
+  }
+
+  /**
+   * If `username` is provided: hits /users/:username/orgs  
+   * Otherwise: hits /user/orgs (authenticated user via your token)
+   */
+  async getUserOrganizations(
+    username?: string,
+    page = 1,
+    perPage = 100
+  ): Promise<IOrganization[]> {
+    const endpoint = username
+      ? `${this.baseURL}/users/${username}/orgs`
+      : `${this.baseURL}/user/orgs`
+
+    const response: AxiosResponse = await axios.get(endpoint, {
+      headers: this.getHeaders(),
+      params: { page, per_page: perPage },
+    })
+
+    return response.data.map((org: any) => ({
+      id: org.id,
+      login: org.login,
+      name: org.name,
+      description: org.description,
+      htmlUrl: org.html_url,
+      url: org.url,
+      reposUrl: org.repos_url,
+      eventsUrl: org.events_url,
+      membersUrl: org.members_url,
+      publicMembersUrl: org.public_members_url,
+      avatarUrl: org.avatar_url,
+      isVerified: org.is_verified || false,
+      createdAt: new Date(org.created_at),
+      updatedAt: new Date(org.updated_at),
+    }))
   }
 }

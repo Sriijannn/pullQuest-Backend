@@ -17,6 +17,7 @@ export interface IUser extends Document, IUserMethods {
   lastLogin: Date;
   createdAt: Date;
   upadtedAt: Date;
+  githubUsername?: string;
 }
 
 interface IUserMethods {
@@ -110,6 +111,12 @@ userSchema.pre("save", function (next) {
     this.rank = this.calculateRank();
   }
   next();
+  githubUsername: {
+    type: String,
+    required: function (this: IUser) {
+      return this.role === "contributor" || this.role === "maintainer";
+    },
+  },
 });
 
 userSchema.methods.xpForNextRank = function (): number {
