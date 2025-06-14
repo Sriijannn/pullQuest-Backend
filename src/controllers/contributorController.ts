@@ -646,4 +646,5 @@ export class ContributorController {
       });
     }
   };
+
 }

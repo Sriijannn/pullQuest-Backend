@@ -1,7 +1,5 @@
 import { Router } from "express";
 import { ContributorController } from "../controllers/contributorController";
-import { authMiddleware } from "../middleware/authMiddleware";
-import { validateContributorRole } from "../middleware/roleMiddleware";
 import {
   repositoryAnalysisRateLimit,
   issueFetchRateLimit,
@@ -13,9 +11,6 @@ const router = Router();
 const contributorController = new ContributorController();
 
 const stakeController = new StakeController();
-
-router.use(authMiddleware);
-router.use(validateContributorRole);
 
 router.post(
   "/analyze-repositories",
@@ -42,7 +37,7 @@ router.post("/stakes", stakeController.createStake);
 router.patch("/stakes/:stakesId", stakeController.updateStakeStatus);
 router.get('/:userId/stakes', stakeController.getUserStakes)
 router.get('/profile/:userId', contributorController.getContributorProfile)
-router.post('prepare-stakes',
+router.post('/prepare-stakes',
   contributorController.prepareStake
 )
 
