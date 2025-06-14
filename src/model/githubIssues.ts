@@ -50,6 +50,10 @@ export interface IIssue {
   };
   difficulty?: "beginner" | "intermediate" | "advanced";
   estimatedHours?: number;
+  bounty?: number;
+  xpReward?: number;
+  stakingRequired?: number;
+  expirationDate?: Date;
 }
 
 export interface IGitHubIssues extends Document {
@@ -63,6 +67,8 @@ export interface IGitHubIssues extends Document {
     labels: string[];
     difficulty?: string;
     minStars?: number;
+    minBounty?: number;
+    maxBounty?: number;
   };
   createdAt: Date;
   updatedAt: Date;

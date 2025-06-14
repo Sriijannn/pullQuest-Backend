@@ -1,7 +1,10 @@
 import { Request, Response } from "express";
-import GitHubRepository from "../model/githubRepositories";
-import GitHubIssues from "../model/githubIssues";
+import GitHubRepository, { IRepository } from "../model/githubRepositories";
+import GitHubIssues, { IIssue } from "../model/githubIssues";
 import { GitHubService } from "../services/githubService";
+import User from "../model/User";
+import Stake from "../model/stake";
+import githubIssues from "../model/githubIssues";
 
 export class ContributorController {
   private githubService: GitHubService;
@@ -119,6 +122,7 @@ export class ContributorController {
           topLanguages: analysis.topLanguages,
           lastAnalyzed: analysis.lastAnalyzed,
           totalRepositories: repositories.length,
+          coinRewards: this.calculateCoinRewards(repositories),
         },
       });
     } catch (error: any) {
@@ -130,6 +134,12 @@ export class ContributorController {
       });
     }
   };
+
+  private calculateCoinRewards(repositories: IRepository[]): number {
+    return repositories.reduce((total, repo) => {
+      return total + repo.stargazersCount * 0.5 + repo.forksCount * 0.2;
+    }, 0);
+  }
 
   /**
    * Get suggested issues based on user's top languages
@@ -258,6 +268,9 @@ export class ContributorController {
             repo
           );
 
+          issue.bounty = this.calculateBounty(issue);
+          issue.xpReward = this.calculateXPReward(issue);
+
           if (repoDetails) {
             issue.repository = { ...issue.repository, ...repoDetails };
           }
@@ -327,6 +340,29 @@ export class ContributorController {
       });
     }
   };
+
+  private calculateBounty(issue: IIssue): number {
+    const baseBounty = 10;
+    const difficultyMultiplier = {
+      beginner: 1,
+      intermediate: 1.5,
+      advanced: 2,
+    };
+
+    return Math.round(
+      baseBounty *
+        difficultyMultiplier[issue.difficulty || "intermediate"] *
+        (1 + issue.repository.stargazersCount / 1000)
+    );
+  }
+
+  private calculateXPReward(issue: IIssue): number {
+    return issue.difficulty === "beginner"
+      ? 50
+      : issue.difficulty === "intermediate"
+      ? 100
+      : 150;
+  }
 
   /**
    * Get user's repository analysis summary
@@ -414,6 +450,8 @@ export class ContributorController {
         return;
       }
 
+      const { minBounty, maxBounty } = req.body.filters || {};
+
       // Update user's issue preferences
       await GitHubIssues.findOneAndUpdate(
         { userId, githubUsername },
@@ -423,6 +461,8 @@ export class ContributorController {
             "filters.labels": labels,
             "filters.difficulty": difficulty,
             "filters.minStars": minStars,
+            "filters.minBounty": minBounty,
+            "filters.maxBounty": maxBounty,
           },
         },
         { upsert: true }
@@ -481,11 +521,19 @@ export class ContributorController {
         );
 
         if (issue) {
+          const bountyDetails = {
+            coins: this.calculateBounty(issue),
+            xp: this.calculateXPReward(issue),
+            expiration: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            stakingRequired: Math.floor(this.calculateBounty(issue) * 0.3),
+          };
+
           res.status(200).json({
             success: true,
             message: "Issue details retrieved successfully",
             data: {
               issue,
+              bounty: bountyDetails,
               fromCache: true,
             },
           });
@@ -504,6 +552,96 @@ export class ContributorController {
       res.status(500).json({
         success: false,
         message: "Failed to fetch issue details",
+        error: error.message,
+      });
+    }
+  };
+
+  public getContributorProfile = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const { userId } = req.params;
+
+      const user = await User.findById(userId);
+      if (!user || user.role !== "contributor") {
+        res.status(404).json({
+          success: false,
+          message: "Contributor not found",
+        });
+        return;
+      }
+
+      const nextRankXP = user.xpForNextRank ? user.xpForNextRank() : 0;
+      const stakes = await Stake.find({ userId })
+        .sort({ createAt: -1 })
+        .limit(5);
+
+      res.status(200).json({
+        success: true,
+        data: {
+          profile: {
+            name: user.profile?.name,
+            githubUsername: user.githubUsername,
+            bio: user.profile?.bio,
+          },
+          stats: {
+            coins: user.coins,
+            xp: user.xp || 0,
+            rank: user.rank,
+            nextRankXP,
+            monthlyRefillDate: user.monthlyCoinsLastRefill,
+          },
+          recentStakes: stakes,
+        },
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to get contributor profile",
+        error: error.message,
+      });
+    }
+  };
+
+  public prepareStake = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { userId, issueId } = req.body;
+      const user = await User.findById(userId);
+
+      if (!user) {
+        res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      const issue = await githubIssues.findOne({
+        "suggestedIssues.id": issueId,
+      });
+      if (!issue) {
+        res.status(404).json({
+          success: false,
+          message: "Issue not found",
+        });
+      }
+
+      const issueDetails = issue?.suggestedIssues.find((i) => i.id === issueId);
+      const stakeAmount = issueDetails?.stakingRequired || 0;
+
+      res.status(200).json({
+        success: true,
+        data: {
+          stakeAmount,
+          potentialReward: issueDetails?.bounty || 0,
+          xpReward: issueDetails?.xpReward || 0,
+        },
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to prepare stake",
         error: error.message,
       });
     }
