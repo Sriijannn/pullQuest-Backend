@@ -1,9 +1,9 @@
-import axios, { AxiosResponse } from 'axios';
-import { IRepository, ILanguageStats } from '../model/githubRepositories';
-import { IIssue } from '../model/githubIssues';
+import axios, { AxiosResponse } from "axios";
+import { IRepository, ILanguageStats } from "../model/githubRepositories";
+import { IIssue } from "../model/githubIssues";
 
 export class GitHubService {
-  private readonly baseURL = 'https://api.github.com';
+  private readonly baseURL = "https://api.github.com";
   private readonly token?: string;
 
   constructor(token?: string) {
@@ -12,29 +12,33 @@ export class GitHubService {
 
   private getHeaders() {
     const headers: any = {
-      'Accept': 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
     };
-    
+
     if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+      headers["Authorization"] = `Bearer ${this.token}`;
     }
-    
+
     return headers;
   }
 
-// Fetch user's public repositories
+  // Fetch user's public repositories
 
-  async getUserRepositories(username: string, page: number = 1, perPage: number = 100): Promise<IRepository[]> {
+  async getUserRepositories(
+    username: string,
+    page: number = 1,
+    perPage: number = 100
+  ): Promise<IRepository[]> {
     try {
       const response: AxiosResponse = await axios.get(
         `${this.baseURL}/users/${username}/repos`,
         {
           headers: this.getHeaders(),
           params: {
-            type: 'public',
-            sort: 'updated',
-            direction: 'desc',
+            type: "public",
+            sort: "updated",
+            direction: "desc",
             page,
             per_page: perPage,
           },
@@ -57,14 +61,24 @@ export class GitHubService {
         visibility: repo.visibility,
       }));
     } catch (error: any) {
-      console.error('Error fetching user repositories:', error.response?.data || error.message);
-      throw new Error(`Failed to fetch repositories: ${error.response?.data?.message || error.message}`);
+      console.error(
+        "Error fetching user repositories:",
+        error.response?.data || error.message
+      );
+      throw new Error(
+        `Failed to fetch repositories: ${
+          error.response?.data?.message || error.message
+        }`
+      );
     }
   }
 
-// Get repository languages with bytes information
+  // Get repository languages with bytes information
 
-  async getRepositoryLanguages(owner: string, repo: string): Promise<Record<string, number>> {
+  async getRepositoryLanguages(
+    owner: string,
+    repo: string
+  ): Promise<Record<string, number>> {
     try {
       const response: AxiosResponse = await axios.get(
         `${this.baseURL}/repos/${owner}/${repo}/languages`,
@@ -75,24 +89,32 @@ export class GitHubService {
 
       return response.data;
     } catch (error: any) {
-      console.error(`Error fetching languages for ${owner}/${repo}:`, error.response?.data || error.message);
+      console.error(
+        `Error fetching languages for ${owner}/${repo}:`,
+        error.response?.data || error.message
+      );
       return {};
     }
   }
 
+  // Calculate language statistics from repositories
 
-// Calculate language statistics from repositories
-
-  calculateLanguageStats(repositories: IRepository[], languagesData: Record<string, Record<string, number>>): {
+  calculateLanguageStats(
+    repositories: IRepository[],
+    languagesData: Record<string, Record<string, number>>
+  ): {
     languageStats: Map<string, ILanguageStats>;
     topLanguages: string[];
   } {
-    const languageMap = new Map<string, { count: number; totalBytes: number }>();
+    const languageMap = new Map<
+      string,
+      { count: number; totalBytes: number }
+    >();
 
     // Process each repository's languages
     repositories.forEach((repo) => {
       const repoLanguages = languagesData[repo.fullName] || {};
-      
+
       Object.entries(repoLanguages).forEach(([language, bytes]) => {
         if (languageMap.has(language)) {
           const existing = languageMap.get(language)!;
@@ -105,7 +127,10 @@ export class GitHubService {
     });
 
     // Calculate total bytes across all languages
-    const totalBytes = Array.from(languageMap.values()).reduce((sum, lang) => sum + lang.totalBytes, 0);
+    const totalBytes = Array.from(languageMap.values()).reduce(
+      (sum, lang) => sum + lang.totalBytes,
+      0
+    );
 
     // Create language stats with percentages
     const languageStats = new Map<string, ILanguageStats>();
@@ -126,8 +151,7 @@ export class GitHubService {
     return { languageStats, topLanguages };
   }
 
-
-// Search for issues across GitHub based on languages
+  // Search for issues across GitHub based on languages
   async searchIssues(
     languages: string[],
     options: {
@@ -135,31 +159,31 @@ export class GitHubService {
       minStars?: number;
       page?: number;
       perPage?: number;
-      state?: 'open' | 'closed' | 'all';
+      state?: "open" | "closed" | "all";
     } = {}
   ): Promise<IIssue[]> {
     try {
       const {
-        labels = ['good first issue', 'help wanted', 'beginner-friendly'],
+        labels = ["good first issue", "help wanted", "beginner-friendly"],
         minStars = 10,
         page = 1,
         perPage = 50,
-        state = 'open'
+        state = "open",
       } = options;
 
       // Build search query
       let query = `state:${state} type:issue `;
-      
+
       // Add language filters
       if (languages.length > 0) {
-        query += languages.map(lang => `language:${lang}`).join(' OR ');
+        query += languages.map((lang) => `language:${lang}`).join(" OR ");
       }
-      
+
       // Add label filters
       if (labels.length > 0) {
-        query += ` ${labels.map(label => `label:"${label}"`).join(' OR ')}`;
+        query += ` ${labels.map((label) => `label:"${label}"`).join(" OR ")}`;
       }
-      
+
       // Add minimum stars filter
       if (minStars > 0) {
         query += ` stars:>=${minStars}`;
@@ -171,8 +195,8 @@ export class GitHubService {
           headers: this.getHeaders(),
           params: {
             q: query,
-            sort: 'updated',
-            order: 'desc',
+            sort: "updated",
+            order: "desc",
             page,
             per_page: perPage,
           },
@@ -193,43 +217,51 @@ export class GitHubService {
           htmlUrl: issue.user.html_url,
           type: issue.user.type,
         },
-        labels: issue.labels?.map((label: any) => ({
-          id: label.id,
-          name: label.name,
-          color: label.color,
-          description: label.description,
-        })) || [],
-        assignee: issue.assignee ? {
-          id: issue.assignee.id,
-          login: issue.assignee.login,
-          avatarUrl: issue.assignee.avatar_url,
-          htmlUrl: issue.assignee.html_url,
-          type: issue.assignee.type,
-        } : undefined,
-        assignees: issue.assignees?.map((assignee: any) => ({
-          id: assignee.id,
-          login: assignee.login,
-          avatarUrl: assignee.avatar_url,
-          htmlUrl: assignee.html_url,
-          type: assignee.type,
-        })) || [],
-        milestone: issue.milestone ? {
-          id: issue.milestone.id,
-          title: issue.milestone.title,
-          description: issue.milestone.description,
-          state: issue.milestone.state,
-          dueOn: issue.milestone.due_on ? new Date(issue.milestone.due_on) : undefined,
-        } : undefined,
+        labels:
+          issue.labels?.map((label: any) => ({
+            id: label.id,
+            name: label.name,
+            color: label.color,
+            description: label.description,
+          })) || [],
+        assignee: issue.assignee
+          ? {
+              id: issue.assignee.id,
+              login: issue.assignee.login,
+              avatarUrl: issue.assignee.avatar_url,
+              htmlUrl: issue.assignee.html_url,
+              type: issue.assignee.type,
+            }
+          : undefined,
+        assignees:
+          issue.assignees?.map((assignee: any) => ({
+            id: assignee.id,
+            login: assignee.login,
+            avatarUrl: assignee.avatar_url,
+            htmlUrl: assignee.html_url,
+            type: assignee.type,
+          })) || [],
+        milestone: issue.milestone
+          ? {
+              id: issue.milestone.id,
+              title: issue.milestone.title,
+              description: issue.milestone.description,
+              state: issue.milestone.state,
+              dueOn: issue.milestone.due_on
+                ? new Date(issue.milestone.due_on)
+                : undefined,
+            }
+          : undefined,
         commentsCount: issue.comments,
         createdAt: new Date(issue.created_at),
         updatedAt: new Date(issue.updated_at),
         closedAt: issue.closed_at ? new Date(issue.closed_at) : undefined,
         authorAssociation: issue.author_association,
         repository: {
-          id: issue.repository_url.split('/').pop(),
-          name: issue.repository_url.split('/').pop(),
-          fullName: `${issue.repository_url.split('/').slice(-2).join('/')}`,
-          htmlUrl: issue.html_url.split('/issues/')[0],
+          id: issue.repository_url.split("/").pop(),
+          name: issue.repository_url.split("/").pop(),
+          fullName: `${issue.repository_url.split("/").slice(-2).join("/")}`,
+          htmlUrl: issue.html_url.split("/issues/")[0],
           language: undefined, // Will be filled later if needed
           stargazersCount: 0, // Will be filled later if needed
           forksCount: 0, // Will be filled later if needed
@@ -237,14 +269,41 @@ export class GitHubService {
         },
         difficulty: this.estimateDifficulty(issue),
         estimatedHours: this.estimateHours(issue),
+        bounty: this.calculateBounty(issue),
+        xpReward: this.calculateXPReward(issue),
+        stakingRequired: Math.floor(this.calculateBounty(issue) * 0.3),
+        expirationDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
       }));
     } catch (error: any) {
-      console.error('Error searching issues:', error.response?.data || error.message);
-      throw new Error(`Failed to search issues: ${error.response?.data?.message || error.message}`);
+      console.error(
+        "Error searching issues:",
+        error.response?.data || error.message
+      );
+      throw new Error(
+        `Failed to search issues: ${
+          error.response?.data?.message || error.message
+        }`
+      );
     }
   }
 
-// Get detailed repository information
+  private calculateBounty(issue: any): number {
+    const base = 10;
+    const difficulty = this.estimateDifficulty(issue);
+    const multiplier =
+      difficulty === "beginner" ? 1 : difficulty === "intermediate" ? 1.5 : 2;
+    return Math.round(base * multiplier);
+  }
+
+  private calculateXPReward(issue: any): number {
+    return issue.difficulty === "beginner"
+      ? 50
+      : issue.difficulty === "intermediate"
+      ? 100
+      : 150;
+  }
+
+  // Get detailed repository information
 
   async getRepositoryDetails(owner: string, repo: string): Promise<any> {
     try {
@@ -266,28 +325,47 @@ export class GitHubService {
         forksCount: response.data.forks_count,
       };
     } catch (error: any) {
-      console.error(`Error fetching repository details for ${owner}/${repo}:`, error.response?.data || error.message);
+      console.error(
+        `Error fetching repository details for ${owner}/${repo}:`,
+        error.response?.data || error.message
+      );
       return null;
     }
   }
 
+  // Estimate issue difficulty based on labels and content
+  private estimateDifficulty(
+    issue: any
+  ): "beginner" | "intermediate" | "advanced" {
+    const beginnerLabels = [
+      "good first issue",
+      "beginner",
+      "easy",
+      "starter",
+      "beginner-friendly",
+    ];
+    const advancedLabels = ["complex", "advanced", "hard", "expert"];
 
-// Estimate issue difficulty based on labels and content
-  private estimateDifficulty(issue: any): 'beginner' | 'intermediate' | 'advanced' {
-    const beginnerLabels = ['good first issue', 'beginner', 'easy', 'starter', 'beginner-friendly'];
-    const advancedLabels = ['complex', 'advanced', 'hard', 'expert'];
-    
-    const labels = issue.labels?.map((label: any) => label.name.toLowerCase()) || [];
-    
-    if (labels.some((label: string) => beginnerLabels.some(bl => label.includes(bl)))) {
-      return 'beginner';
+    const labels =
+      issue.labels?.map((label: any) => label.name.toLowerCase()) || [];
+
+    if (
+      labels.some((label: string) =>
+        beginnerLabels.some((bl) => label.includes(bl))
+      )
+    ) {
+      return "beginner";
     }
-    
-    if (labels.some((label: string) => advancedLabels.some(al => label.includes(al)))) {
-      return 'advanced';
+
+    if (
+      labels.some((label: string) =>
+        advancedLabels.some((al) => label.includes(al))
+      )
+    ) {
+      return "advanced";
     }
-    
-    return 'intermediate';
+
+    return "intermediate";
   }
 
   /**
@@ -297,7 +375,7 @@ export class GitHubService {
     const bodyLength = issue.body?.length || 0;
     const commentsCount = issue.comments || 0;
     const labelsCount = issue.labels?.length || 0;
-    
+
     // Simple heuristic based on content complexity
     if (bodyLength < 200 && commentsCount < 5) {
       return Math.random() * 3 + 1; // 1-4 hours

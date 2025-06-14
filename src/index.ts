@@ -5,7 +5,7 @@ import mongoose from "mongoose";
 import authRoutes from "./routes/auth";
 import { verifyToken } from "./middleware/verifyToken";
 import helmet from "helmet";
-
+import { handlePRWebhook } from "./webhooks/githubWebhooks";
 import contributorRoutes from "./routes/contributorRoutes";
 import { githubApiRateLimit } from "./middleware/rateLimitMiddleware";
 
@@ -46,6 +46,14 @@ app.get("/health", (req: Request, res: Response): void => {
   });
 });
 
+app.post(
+  "/webhooks/github",
+  express.json({
+    type: "application/json",
+  }),
+  handlePRWebhook
+);
+
 app.use("/", authRoutes);
 
 app.use("/api/contributor", contributorRoutes);
@@ -70,6 +78,10 @@ const connectDB = async (): Promise<void> => {
 const startServer = async (): Promise<void> => {
   try {
     await connectDB();
+
+    import("./utils/coinRefillScheduler").then((module) => {
+      module.scheduleCoinRefill();
+    });
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
