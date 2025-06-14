@@ -26,6 +26,7 @@ export interface IGitHubRepository extends Document {
   userId: Types.ObjectId;
   githubUsername: string;
   repositories: IRepository[];
+  organizations: string[];
   languageStats: Map<string, ILanguageStats>;
   topLanguages: string[];
   lastAnalyzed: Date;
@@ -67,6 +68,7 @@ const gitHubRepositorySchema = new Schema<IGitHubRepository>(
       required: true,
     },
     repositories: [repositorySchema],
+    organizations: [{ type: String }],
     languageStats: {
       type: Map,
       of: languageStatsSchema,
