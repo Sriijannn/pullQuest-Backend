@@ -24,12 +24,17 @@ passport.use(
       callbackURL: "http://localhost:8012/auth/github/callback",
     },
     function (
-      _accessToken: string,
-      _refreshToken: string,
+      accessToken: string,
+      refreshToken: string,
       profile: GitHubProfile,
       done: VerifyCallback
     ) {
-      return done(null, profile);
-    }
+      const user = {
+        profile,
+        accessToken,
+        refreshToken,
+      };
+      return done(null, user);
+    }    
   )
 );

@@ -56,6 +56,20 @@ app.get(
   "/auth/github/callback",
   passport.authenticate("github", { failureRedirect: "/" }),
   (req, res) => {
+    // --- log everything you care about -----------------------------
+    const user = req.user as {
+      profile: any;
+      accessToken: string;
+      refreshToken: string | null;
+    };
+
+    console.log("✅ GitHub OAuth success:");
+    console.log("Full user object →", JSON.stringify(user, null, 2));
+    console.log("accessToken →", user.accessToken);
+    console.log("refreshToken →", user.refreshToken);
+    // ---------------------------------------------------------------
+
+    // keep the original redirect
     res.redirect(`http://localhost:5173?user=${JSON.stringify(req.user)}`);
   }
 );
