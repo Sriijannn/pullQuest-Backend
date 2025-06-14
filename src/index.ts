@@ -2,57 +2,85 @@ import express, { Application, Request, Response, NextFunction } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
-import session from "express-session";
-import helmet from "helmet";
-
-// Route imports
 import authRoutes from "./routes/auth";
-import githubRoutes from "./routes/GithubRoutes";
+import { verifyToken } from "./middleware/verifyToken";
+import helmet from "helmet";
+import session from "express-session";
+import passport from "passport";
+import "./auth/github";
+
 import contributorRoutes from "./routes/contributorRoutes";
 import { githubApiRateLimit } from "./middleware/rateLimitMiddleware";
-import { verifyToken } from "./middleware/verifyToken";
 
 dotenv.config();
+
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
 
-// Basic middleware
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
-
-// ————————————————
-// **SESSION MUST COME BEFORE GITHUB ROUTES**
 app.use(
   session({
-    secret: process.env.GITHUB_CLIENT_SECRET!,  // <-- your session secret from .env
+    secret: "pullquestby4anus",
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false }, // set true if HTTPS
   })
 );
+app.use(passport.initialize());
+app.use(passport.session());
 
-// Mount GitHub OAuth & org routes at the root or under /api
-app.use("/", githubRoutes);               // handles /auth/github and /auth/callback/github
-app.use("/api/github", githubApiRateLimit, githubRoutes);
-// JWT middleware for your own auth routes
-app.use((req, res, next) => {
-  if (req.path === "/login" || req.path === "/register") return next();
-  return verifyToken(req, res, next);
+// Middleware to skip verifyToken on /login and /register
+const jwtMiddleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  // Allow unauthenticated access to these paths
+  if (req.path === "/login" || req.path === "/register") {
+    next();
+    return;
+  }
+  // Otherwise verify token
+  verifyToken(req, res, next);
+};
+
+// Start GitHub OAuth flow
+app.get(
+  "/auth/github",
+  passport.authenticate("github", { scope: ["user:email"] })
+);
+
+// GitHub OAuth callback
+app.get(
+  "/auth/github/callback",
+  passport.authenticate("github", { failureRedirect: "/" }),
+  (req, res) => {
+    res.redirect(`http://localhost:5173?user=${JSON.stringify(req.user)}`);
+  }
+);
+
+// Optional: route to get user info
+app.get("/api/user", (req, res) => {
+  res.json(req.user || null);
 });
 
-// Your own auth, contributor, etc.
+// Apply the middleware and then routes
+app.use("/api", githubApiRateLimit);
+
+// Optional health check route (no auth needed)
+app.get("/health", (req: Request, res: Response): void => {
+  res.status(200).json({
+    success: true,
+    message: "Server is running",
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || "development",
+  });
+});
+
 app.use("/", authRoutes);
+
 app.use("/api/contributor", contributorRoutes);
-
-// Health check
-app.get("/health", (req, res) => {
-  res.json({ success: true, message: "Server is running" });
-});
-
-// MongoDB connection
-const uri = process.env.MONGO_URI;
-if (!uri) throw new Error("MONGO_URI must be set in .env");
 
 //db connection function
 const connectDB = async (): Promise<void> => {

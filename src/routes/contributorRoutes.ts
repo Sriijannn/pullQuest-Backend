@@ -11,8 +11,8 @@ const router = Router();
 
 const contributorController = new ContributorController();
 
-router.use(authMiddleware);
-router.use(validateContributorRole);
+// router.use("/", authMiddleware);
+// router.use("/", validateContributorRole);
 
 router.post(
   "/analyze-repositories",
