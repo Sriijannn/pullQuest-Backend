@@ -151,43 +151,44 @@ export class GitHubService {
     return { languageStats, topLanguages };
   }
 
-  // Search for issues across GitHub based on languages
   async searchIssues(
     languages: string[],
+    organizations: string[],
     options: {
-      labels?: string[];
-      minStars?: number;
       page?: number;
       perPage?: number;
-      state?: "open" | "closed" | "all";
     } = {}
   ): Promise<IIssue[]> {
     try {
-      const {
-        labels = ["good first issue", "help wanted", "beginner-friendly"],
-        minStars = 10,
-        page = 1,
-        perPage = 50,
-        state = "open",
-      } = options;
+      const { page = 1, perPage = 50 } = options;
 
       // Build search query
-      let query = `state:${state} type:issue `;
+      let queryParts: string[] = ["state:open", "type:issue"];
 
       // Add language filters
       if (languages.length > 0) {
-        query += languages.map((lang) => `language:${lang}`).join(" OR ");
+        const langQuery = languages
+          .slice(0, 5) // Limit to 5 languages
+          .map((lang) => `language:"${lang}"`)
+          .join(" OR ");
+        queryParts.push(`(${langQuery})`);
       }
 
-      // Add label filters
-      if (labels.length > 0) {
-        query += ` ${labels.map((label) => `label:"${label}"`).join(" OR ")}`;
+      if (organizations.length > 0) {
+        const orgQuery = organizations
+          .slice(0, 5) // Limit to 5 organizations
+          .map((org) => `org:"${org}"`)
+          .join(" OR ");
+        queryParts.push(`(${orgQuery})`);
       }
 
-      // Add minimum stars filter
-      if (minStars > 0) {
-        query += ` stars:>=${minStars}`;
-      }
+      // Add default labels
+      queryParts.push(
+        `label:"good first issue" OR label:"help wanted" OR label:"beginner-friendly"`
+      );
+
+      const query = queryParts.join(" ");
+    console.log("GitHub Search Query:", query); 
 
       const response: AxiosResponse = await axios.get(
         `${this.baseURL}/search/issues`,
@@ -383,6 +384,25 @@ export class GitHubService {
       return Math.random() * 8 + 4; // 4-12 hours
     } else {
       return Math.random() * 20 + 12; // 12-32 hours
+    }
+  }
+
+  public async getUserOrganizations(username: string): Promise<string[]> {
+    try {
+      const response = await axios.get(
+        `${this.baseURL}/users/${username}/orgs`,
+        {
+          headers: this.getHeaders(),
+          params: {
+            per_page: 100,
+          },
+        }
+      );
+
+      return response.data.map((org: any) => org.login);
+    } catch (error: any) {
+      console.error(`Error fetching organizations for ${username} `, error);
+      return [];
     }
   }
 }
