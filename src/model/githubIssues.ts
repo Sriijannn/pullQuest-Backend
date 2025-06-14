@@ -61,6 +61,7 @@ export interface IGitHubIssues extends Document {
   githubUsername: string;
   suggestedIssues: IIssue[];
   userTopLanguages: string[];
+  userOrganizations: string[];
   lastFetched: Date;
   filters: {
     languages: string[];
@@ -142,6 +143,7 @@ const gitHubIssuesSchema = new Schema<IGitHubIssues>(
     },
     suggestedIssues: [issueSchema],
     userTopLanguages: [{ type: String }],
+    userOrganizations: [{ type: String }],
     lastFetched: {
       type: Date,
       default: Date.now,

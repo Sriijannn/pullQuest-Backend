@@ -24,21 +24,24 @@ router.post(
   contributorController.getSuggestedIssues
 );
 
-router.get(
-  "/repository-analysis/:userId/:githubUsername",
-  contributorController.getRepositoryAnalysis
+router.post(
+  "/analyze-repositories",
+  repositoryAnalysisRateLimit,
+  contributorController.analyzeUserRepositories
 );
 
-router.post("/update-filters", contributorController.updateIssueFilters);
+router.post(
+  "/suggested-issues",
+  issueFetchRateLimit,
+  contributorController.getSuggestedIssues
+);
 
 router.get("/issue-details/:issueId", contributorController.getIssueDetails);
 
 router.post("/stakes", stakeController.createStake);
 router.patch("/stakes/:stakesId", stakeController.updateStakeStatus);
-router.get('/:userId/stakes', stakeController.getUserStakes)
-router.get('/profile/:userId', contributorController.getContributorProfile)
-router.post('/prepare-stakes',
-  contributorController.prepareStake
-)
+router.get("/:userId/stakes", stakeController.getUserStakes);
+router.get("/profile/:userId", contributorController.getContributorProfile);
+router.post("prepare-stakes", contributorController.prepareStake);
 
 export default router;
