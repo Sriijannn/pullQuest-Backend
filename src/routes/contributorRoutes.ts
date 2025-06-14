@@ -1,7 +1,5 @@
 import { Router } from "express";
 import { ContributorController } from "../controllers/contributorController";
-import { authMiddleware } from "../middleware/authMiddleware";
-import { validateContributorRole } from "../middleware/roleMiddleware";
 import {
   repositoryAnalysisRateLimit,
   issueFetchRateLimit,
@@ -13,9 +11,6 @@ const router = Router();
 const contributorController = new ContributorController();
 
 const stakeController = new StakeController();
-
-router.use(authMiddleware);
-router.use(validateContributorRole);
 
 router.post(
   "/analyze-repositories",

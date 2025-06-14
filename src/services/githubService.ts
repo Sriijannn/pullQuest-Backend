@@ -205,7 +205,7 @@ export class GitHubService {
       );
 
       const query = queryParts.join(" ");
-    console.log("GitHub Search Query:", query); 
+      console.log("GitHub Search Query:", query);
 
       const response: AxiosResponse = await axios.get(
         `${this.baseURL}/search/issues`,
@@ -405,47 +405,34 @@ export class GitHubService {
   }
 
   public async getUserOrganizations(username: string): Promise<string[]> {
-    try {
-      const response = await axios.get(
-        `${this.baseURL}/users/${username}/orgs`,
-        {
-          headers: this.getHeaders(),
-          params: {
-            per_page: 100,
-          },
-        }
-      );
-
-      return response.data.map((org: any) => org.login);
-    } catch (error: any) {
-      console.error(`Error fetching organizations for ${username} `, error);
-      return [];
-    }
+    const orgService = new GitHubOrganizationsService(this.token);
+    const orgs = await orgService.getUserOrganizations(username);
+    return orgs.map((org) => org.login);
   }
 }
 
 // services/githubService.ts
 export class GitHubOrganizationsService {
-  private readonly baseURL = 'https://api.github.com'
-  private readonly token?: string
+  private readonly baseURL = "https://api.github.com";
+  private readonly token?: string;
 
   constructor(token?: string) {
-    this.token = token
+    this.token = token;
   }
 
   private getHeaders() {
     const headers: Record<string, string> = {
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-    }
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+    };
     if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`
+      headers["Authorization"] = `Bearer ${this.token}`;
     }
-    return headers
+    return headers;
   }
 
   /**
-   * If `username` is provided: hits /users/:username/orgs  
+   * If `username` is provided: hits /users/:username/orgs
    * Otherwise: hits /user/orgs (authenticated user via your token)
    */
   async getUserOrganizations(
@@ -455,12 +442,12 @@ export class GitHubOrganizationsService {
   ): Promise<IOrganization[]> {
     const endpoint = username
       ? `${this.baseURL}/users/${username}/orgs`
-      : `${this.baseURL}/user/orgs`
+      : `${this.baseURL}/user/orgs`;
 
     const response: AxiosResponse = await axios.get(endpoint, {
       headers: this.getHeaders(),
       params: { page, per_page: perPage },
-    })
+    });
 
     return response.data.map((org: any) => ({
       id: org.id,
@@ -477,6 +464,6 @@ export class GitHubOrganizationsService {
       isVerified: org.is_verified || false,
       createdAt: new Date(org.created_at),
       updatedAt: new Date(org.updated_at),
-    }))
+    }));
   }
 }

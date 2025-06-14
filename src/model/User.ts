@@ -4,7 +4,6 @@ export interface IUser extends Document, IUserMethods {
   email: string;
   password: string;
   role: "contributor" | "maintainer" | "company";
-  githubUsername: string;
   profile: {
     name: string;
     bio?: string;
@@ -89,8 +88,8 @@ const userSchema = new Schema<IUser & IUserMethods>(
   }
 );
 
-userSchema.index({ email: 1 });
-userSchema.index({ githubUsername: 1 });
+// userSchema.index({ email: 1 });
+// userSchema.index({ githubUsername: 1 });
 userSchema.index({ role: 1 });
 userSchema.index({ xp: -1 });
 
@@ -111,12 +110,6 @@ userSchema.pre("save", function (next) {
     this.rank = this.calculateRank();
   }
   next();
-  githubUsername: {
-    type: String,
-    required: function (this: IUser) {
-      return this.role === "contributor" || this.role === "maintainer";
-    },
-  },
 });
 
 userSchema.methods.xpForNextRank = function (): number {

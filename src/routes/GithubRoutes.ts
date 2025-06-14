@@ -1,8 +1,10 @@
 import { Router } from "express";
 import fetch from "node-fetch";
-import session from "express-session";
 import { Request, Response, NextFunction } from "express";
-import { GitHubOrganizationsService, IOrganization } from "../services/githubService";
+import {
+  GitHubOrganizationsService,
+  IOrganization,
+} from "../services/githubService";
 
 const orgService = new GitHubOrganizationsService(process.env.GITHUB_TOKEN);
 
@@ -21,24 +23,26 @@ const router = Router();
 
 router.get("/github/orgs/:username", async (req, res, next) => {
   try {
-    const { username } = req.params
-    const orgs: IOrganization[] = await orgService.getUserOrganizations(username)
-    res.json(orgs)
+    const { username } = req.params;
+    const orgs: IOrganization[] = await orgService.getUserOrganizations(
+      username
+    );
+    res.json(orgs);
   } catch (err) {
-    next(err)
+    next(err);
   }
-})
+});
 
 // 2️⃣ Fetch all (public+private) orgs for *your* token
 router.get("/github/orgs", async (req, res, next) => {
   try {
     // no username → uses /user/orgs under the hood
-    const orgs: IOrganization[] = await orgService.getUserOrganizations()
-    res.json(orgs)
+    const orgs: IOrganization[] = await orgService.getUserOrganizations();
+    res.json(orgs);
   } catch (err) {
-    next(err)
+    next(err);
   }
-})
+});
 
 // Initiate GitHub OAuth flow
 router.get(
@@ -87,7 +91,9 @@ router.get(
           if (!access_token) {
             res
               .status(401)
-              .json({ error: tokenJson.error_description || "Token exchange failed" });
+              .json({
+                error: tokenJson.error_description || "Token exchange failed",
+              });
             return;
           }
 
@@ -114,7 +120,5 @@ router.get(
     }
   }
 );
-
-
 
 export default router;
