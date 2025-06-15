@@ -1,0 +1,370 @@
+[{
+  "_id": {
+    "$oid": "6847061e2cbcc695e282a876"
+  },
+  "githubUsername": "octocat",
+  "userId": {
+    "$oid": "6847038d1a1138982e201b9d"
+  },
+  "__v": 0,
+  "createdAt": {
+    "$date": "2025-06-09T16:04:46.297Z"
+  },
+  "filters": {
+    "languages": [
+      "Ruby",
+      "CSS",
+      "HTML",
+      "Shell",
+      "JavaScript"
+    ],
+    "labels": [],
+    "minStars": 10
+  },
+  "lastFetched": {
+    "$date": "2025-06-09T16:04:46.296Z"
+  },
+  "suggestedIssues": [],
+  "updatedAt": {
+    "$date": "2025-06-09T16:04:46.297Z"
+  },
+  "userTopLanguages": [
+    "Ruby",
+    "CSS",
+    "HTML",
+    "Shell",
+    "JavaScript"
+  ]
+},
+{
+  "_id": {
+    "$oid": "684726292cbcc695e282a8b5"
+  },
+  "githubUsername": "ArunKushhhh",
+  "userId": {
+    "$oid": "6847038d1a1138982e201b9d"
+  },
+  "__v": 0,
+  "createdAt": {
+    "$date": "2025-06-09T18:21:29.712Z"
+  },
+  "filters": {
+    "languages": [
+      "Python",
+      "JavaScript",
+      "HTML",
+      "TypeScript",
+      "CSS"
+    ],
+    "labels": [],
+    "minStars": 10
+  },
+  "lastFetched": {
+    "$date": "2025-06-09T18:21:29.711Z"
+  },
+  "suggestedIssues": [],
+  "updatedAt": {
+    "$date": "2025-06-09T18:21:29.712Z"
+  },
+  "userTopLanguages": [
+    "Python",
+    "JavaScript",
+    "HTML",
+    "TypeScript",
+    "CSS"
+  ]
+},
+{
+  "_id": {
+    "$oid": "684e1371abc8f5e0a7c4655f"
+  },
+  "userId": {
+    "$oid": "684d1622f83fa91c29a332c7"
+  },
+  "githubUsername": "NishantSinghhhhh",
+  "suggestedIssues": [
+    {
+      "id": 3146919188,
+      "number": 3,
+      "title": "Test",
+      "body": "Test",
+      "state": "open",
+      "htmlUrl": "https://github.com/NishantSinghhhhh/AIT-Cycling-Club-Website/issues/3",
+      "user": {
+        "id": 151461374,
+        "login": "NishantSinghhhhh",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/151461374?v=4",
+        "htmlUrl": "https://github.com/NishantSinghhhhh",
+        "type": "User",
+        "_id": {
+          "$oid": "684e1371abc8f5e0a7c46561"
+        }
+      },
+      "labels": [
+        {
+          "id": 6564233691,
+          "name": "enhancement",
+          "color": "a2eeef",
+          "description": "New feature or request",
+          "_id": {
+            "$oid": "684e1371abc8f5e0a7c46562"
+          }
+        }
+      ],
+      "assignees": [],
+      "commentsCount": 0,
+      "createdAt": {
+        "$date": "2025-06-15T00:27:30.000Z"
+      },
+      "updatedAt": {
+        "$date": "2025-06-15T00:27:30.000Z"
+      },
+      "authorAssociation": "OWNER",
+      "repository": {
+        "id": 0,
+        "name": "AIT-Cycling-Club-Website",
+        "fullName": "NishantSinghhhhh/AIT-Cycling-Club-Website",
+        "htmlUrl": "https://github.com/NishantSinghhhhh/AIT-Cycling-Club-Website",
+        "language": "",
+        "stargazersCount": 0,
+        "forksCount": 0,
+        "description": ""
+      },
+      "_id": {
+        "$oid": "684e1371abc8f5e0a7c46560"
+      }
+    },
+    {
+      "id": 3146920069,
+      "number": 13,
+      "title": "Test",
+      "body": "Test",
+      "state": "open",
+      "htmlUrl": "https://github.com/NishantSinghhhhh/AI-Shala/issues/13",
+      "user": {
+        "id": 151461374,
+        "login": "NishantSinghhhhh",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/151461374?v=4",
+        "htmlUrl": "https://github.com/NishantSinghhhhh",
+        "type": "User",
+        "_id": {
+          "$oid": "684e13c5abc8f5e0a7c4656b"
+        }
+      },
+      "labels": [],
+      "assignees": [],
+      "commentsCount": 0,
+      "createdAt": {
+        "$date": "2025-06-15T00:28:54.000Z"
+      },
+      "updatedAt": {
+        "$date": "2025-06-15T00:28:54.000Z"
+      },
+      "authorAssociation": "OWNER",
+      "repository": {
+        "id": 0,
+        "name": "AI-Shala",
+        "fullName": "NishantSinghhhhh/AI-Shala",
+        "htmlUrl": "https://github.com/NishantSinghhhhh/AI-Shala",
+        "language": "",
+        "stargazersCount": 0,
+        "forksCount": 0,
+        "description": ""
+      },
+      "_id": {
+        "$oid": "684e13c5abc8f5e0a7c4656a"
+      }
+    },
+    {
+      "id": 3146926606,
+      "number": 14,
+      "title": "Testing 2",
+      "body": "Testing 2",
+      "state": "open",
+      "htmlUrl": "https://github.com/NishantSinghhhhh/AI-Shala/issues/14",
+      "user": {
+        "id": 151461374,
+        "login": "NishantSinghhhhh",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/151461374?v=4",
+        "htmlUrl": "https://github.com/NishantSinghhhhh",
+        "type": "User",
+        "_id": {
+          "$oid": "684e160205446a19653b1fa8"
+        }
+      },
+      "labels": [
+        {
+          "id": 8127568544,
+          "name": "enhancement",
+          "color": "a2eeef",
+          "description": "New feature or request",
+          "_id": {
+            "$oid": "684e160205446a19653b1fa9"
+          }
+        }
+      ],
+      "assignees": [],
+      "commentsCount": 0,
+      "createdAt": {
+        "$date": "2025-06-15T00:38:27.000Z"
+      },
+      "updatedAt": {
+        "$date": "2025-06-15T00:38:27.000Z"
+      },
+      "authorAssociation": "OWNER",
+      "repository": {
+        "id": 0,
+        "name": "AI-Shala",
+        "fullName": "NishantSinghhhhh/AI-Shala",
+        "htmlUrl": "https://github.com/NishantSinghhhhh/AI-Shala",
+        "language": "",
+        "stargazersCount": 0,
+        "forksCount": 0,
+        "description": ""
+      },
+      "stakingRequired": 25,
+      "_id": {
+        "$oid": "684e160205446a19653b1fa7"
+      }
+    },
+    {
+      "id": 3146928906,
+      "number": 3,
+      "title": "Testing ",
+      "body": "Testing ",
+      "state": "open",
+      "htmlUrl": "https://github.com/NishantSinghhhhh/AIT-Cycling-Club/issues/3",
+      "user": {
+        "id": 151461374,
+        "login": "NishantSinghhhhh",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/151461374?v=4",
+        "htmlUrl": "https://github.com/NishantSinghhhhh",
+        "type": "User",
+        "_id": {
+          "$oid": "684e16bc6ea68e3a5b9cfc1e"
+        }
+      },
+      "labels": [
+        {
+          "id": 6376942233,
+          "name": "documentation",
+          "color": "0075ca",
+          "description": "Improvements or additions to documentation",
+          "_id": {
+            "$oid": "684e16bc6ea68e3a5b9cfc1f"
+          }
+        },
+        {
+          "id": 6376942255,
+          "name": "question",
+          "color": "d876e3",
+          "description": "Further information is requested",
+          "_id": {
+            "$oid": "684e16bc6ea68e3a5b9cfc20"
+          }
+        }
+      ],
+      "assignees": [],
+      "commentsCount": 0,
+      "createdAt": {
+        "$date": "2025-06-15T00:41:33.000Z"
+      },
+      "updatedAt": {
+        "$date": "2025-06-15T00:41:33.000Z"
+      },
+      "authorAssociation": "OWNER",
+      "repository": {
+        "id": 0,
+        "name": "AIT-Cycling-Club",
+        "fullName": "NishantSinghhhhh/AIT-Cycling-Club",
+        "htmlUrl": "https://github.com/NishantSinghhhhh/AIT-Cycling-Club",
+        "language": "",
+        "stargazersCount": 0,
+        "forksCount": 0,
+        "description": ""
+      },
+      "stakingRequired": 0,
+      "_id": {
+        "$oid": "684e16bc6ea68e3a5b9cfc1d"
+      }
+    },
+    {
+      "id": 3146933333,
+      "number": 15,
+      "title": "New Test",
+      "body": "New Test",
+      "state": "open",
+      "htmlUrl": "https://github.com/NishantSinghhhhh/AI-Shala/issues/15",
+      "user": {
+        "id": 151461374,
+        "login": "NishantSinghhhhh",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/151461374?v=4",
+        "htmlUrl": "https://github.com/NishantSinghhhhh",
+        "type": "User",
+        "_id": {
+          "$oid": "684e184e6ea68e3a5b9cfc2d"
+        }
+      },
+      "labels": [
+        {
+          "id": 8127568520,
+          "name": "documentation",
+          "color": "0075ca",
+          "description": "Improvements or additions to documentation",
+          "_id": {
+            "$oid": "684e184e6ea68e3a5b9cfc2e"
+          }
+        },
+        {
+          "id": 8127568578,
+          "name": "question",
+          "color": "d876e3",
+          "description": "Further information is requested",
+          "_id": {
+            "$oid": "684e184e6ea68e3a5b9cfc2f"
+          }
+        }
+      ],
+      "assignees": [],
+      "commentsCount": 0,
+      "createdAt": {
+        "$date": "2025-06-15T00:48:15.000Z"
+      },
+      "updatedAt": {
+        "$date": "2025-06-15T00:48:15.000Z"
+      },
+      "authorAssociation": "OWNER",
+      "repository": {
+        "id": 0,
+        "name": "AI-Shala",
+        "fullName": "NishantSinghhhhh/AI-Shala",
+        "htmlUrl": "https://github.com/NishantSinghhhhh/AI-Shala",
+        "language": "",
+        "stargazersCount": 0,
+        "forksCount": 0,
+        "description": ""
+      },
+      "stakingRequired": 26,
+      "_id": {
+        "$oid": "684e184e6ea68e3a5b9cfc2c"
+      }
+    }
+  ],
+  "userTopLanguages": [],
+  "userOrganizations": [],
+  "filters": {
+    "languages": [],
+    "labels": [],
+    "minStars": 0
+  },
+  "lastFetched": {
+    "$date": "2025-06-15T00:27:29.199Z"
+  },
+  "createdAt": {
+    "$date": "2025-06-15T00:27:29.204Z"
+  },
+  "updatedAt": {
+    "$date": "2025-06-15T00:48:14.337Z"
+  },
+  "__v": 4
+}]

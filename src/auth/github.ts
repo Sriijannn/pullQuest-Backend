@@ -22,7 +22,18 @@ passport.use(
       clientID: process.env.GITHUB_CLIENT_ID!,
       clientSecret: process.env.GITHUB_CLIENT_SECRET!,
       callbackURL: "http://localhost:8012/auth/github/callback",
+      scope: [
+        "read:user",
+        "user:email", 
+        "repo", 
+        "read:org",
+        "write:repo_hook",
+        "admin:repo_hook", 
+        "write:repo_hook", 
+        "admin:repo_hook", 
+      ]
     },
+    
     function (
       accessToken: string,
       refreshToken: string,

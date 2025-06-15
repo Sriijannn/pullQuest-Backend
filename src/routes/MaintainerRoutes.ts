@@ -1,8 +1,9 @@
 import { Router, RequestHandler } from "express";
 import User from "../model/User";
-import { listUserOrgs, listUserRepos, listRepoIssues } from "../controllers/MaintainerController";
+import { listUserOrgs, listUserRepos, listRepoIssues, getIssueByNumber, listRepoPullRequests } from "../controllers/MaintainerController";
 import { verifyToken } from "../middleware/verifyToken";
-
+import { createRepoIssueAsUser } from "../controllers/MaintainerController";
+import { ingestIssue } from "../controllers/IssueIngestController";
 const router = Router();
 router.use(verifyToken);
 
@@ -90,8 +91,107 @@ const getRepoIssues: RequestHandler = async (req, res) => {
     }
   };
 
+  export const createIssue: RequestHandler = async (req, res) => {
+    try {
+      const {
+        owner,
+        repo,
+        title,
+        body,
+        labels,
+        assignees,
+        milestone,
+      } = req.body as {
+        owner: string;
+        repo: string;
+        title: string;
+        body?: string;
+        labels?: string[];
+        assignees?: string[];
+        milestone?: string | number;
+      };
+  
+      // 1) Validate
+      if (!owner || !repo || !title) {
+        res
+          .status(400)
+          .json({ success: false, message: "owner, repo and title are required" });
+        return;
+      }
+  
+      // 2) Try user’s OAuth token
+      let githubToken = (req.user as any)?.accessToken as string | undefined;
+  
+      // 3) Fallback to your service PAT from .env
+      if (!githubToken) {
+        githubToken = process.env.GITHUB_ISSUE_CREATION;
+      }
+  
+      if (!githubToken) {
+        res
+          .status(403)
+          .json({ success: false, message: "No GitHub token available to create issue" });
+        return;
+      }
+  
+      // 4) Create the issue
+      const issue = await createRepoIssueAsUser(
+        githubToken,
+        owner,
+        repo,
+        title,
+        body,
+        labels,
+        assignees,
+        milestone
+      );
+  
+      // 5) Return it
+      res.status(201).json({ success: true, data: issue });
+      return;
+    } catch (err: any) {
+      console.error("Error in createIssue handler:", err);
+      res.status(500).json({ success: false, message: err.message });
+      return;
+    }
+  };
+
+  const getRepoPullRequests: RequestHandler = async (req, res) => {
+    try {
+      const { owner, repo, state = "open", per_page = "30", page = "1" } = req.query as {
+        owner?: string;
+        repo?: string;
+        state?: "open" | "closed" | "all";
+        per_page?: string;
+        page?: string;
+      };
+  
+      if (!owner || !repo) {
+        res.status(400).json({ success: false, message: "owner and repo are required" });
+        return;
+      }
+  
+      const pullRequests = await listRepoPullRequests(
+        owner,
+        repo,
+        state,
+        Number(per_page),
+        Number(page)
+      );
+  
+      res.status(200).json({ success: true, data: pullRequests });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  };
+
+
 router.get("/orgs-by-username", getOrgsByUsername);
 router.get("/repos-by-username", getReposByUsername); // <-- Register your new route
 router.get("/repo-issues", getRepoIssues);
+router.post("/create-issue", createIssue);
+router.post("/ingest-issue", ingestIssue);
+router.get("/repo-pulls", getRepoPullRequests);
+router.get("/issue-by-number", getIssueByNumber);
 
 export default router;

@@ -89,7 +89,6 @@ const issueUserSchema = new Schema<IIssueUser>({
   htmlUrl: { type: String, required: true },
   type: { type: String, required: true },
 });
-
 const issueSchema = new Schema<IIssue>({
   id: { type: Number, required: true },
   number: { type: Number, required: true },
@@ -128,6 +127,11 @@ const issueSchema = new Schema<IIssue>({
     enum: ["beginner", "intermediate", "advanced"],
   },
   estimatedHours: { type: Number },
+  // ADD THESE MISSING FIELDS:
+  bounty: { type: Number },
+  xpReward: { type: Number },
+  stakingRequired: { type: Number, default: 0 }, // ← This was missing!
+  expirationDate: { type: Date },
 });
 
 const gitHubIssuesSchema = new Schema<IGitHubIssues>(
@@ -156,6 +160,8 @@ const gitHubIssuesSchema = new Schema<IGitHubIssues>(
         enum: ["beginner", "intermediate", "advanced"],
       },
       minStars: { type: Number, default: 0 },
+      minBounty: { type: Number },
+      maxBounty: { type: Number },
     },
   },
   {
