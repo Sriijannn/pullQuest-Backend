@@ -4,11 +4,8 @@ export interface IUser extends Document, IUserMethods {
   email: string;
   password: string;
   role: "contributor" | "maintainer" | "company";
-  /* ─── NEW FIELDS ──────────────────────────────── */
   accessToken?: string;          // latest GitHub OAuth token
   githubInfo?: string;           // JSON-stringified GitHub profile
-  /* ─────────────────────────────────────────────── */
-  
   profile: {
     name: string;
     bio?: string;
@@ -85,9 +82,8 @@ const userSchema = new Schema<IUser & IUserMethods>(
   { timestamps: true }
 );
 
-/* indexes, hooks, methods unchanged */
-userSchema.index({ email: 1 });
-userSchema.index({ githubUsername: 1 });
+// userSchema.index({ email: 1 });
+// userSchema.index({ githubUsername: 1 });
 userSchema.index({ role: 1 });
 userSchema.index({ xp: -1 });
 
