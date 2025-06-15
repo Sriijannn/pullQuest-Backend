@@ -1,9 +1,10 @@
 import { Router, RequestHandler } from "express";
 import User from "../model/User";
-import { listUserOrgs, listUserRepos, listRepoIssues, getIssueByNumber, listRepoPullRequests } from "../controllers/MaintainerController";
+import { listUserOrgs, listUserRepos, listRepoIssues, getIssueByNumber, listRepoPullRequests, mergePullRequestAsUser} from "../controllers/MaintainerController";
 import { verifyToken } from "../middleware/verifyToken";
 import { createRepoIssueAsUser } from "../controllers/MaintainerController";
 import { ingestIssue } from "../controllers/IssueIngestController";
+import MaintainerIssue from "../model/MaintainerIssues";
 const router = Router();
 router.use(verifyToken);
 
@@ -185,6 +186,96 @@ const getRepoIssues: RequestHandler = async (req, res) => {
     }
   };
 
+  const mergePullRequest: RequestHandler = async (req, res) => {
+    try {
+      const {
+        owner,
+        repo,
+        pull_number,
+        commit_title,
+        commit_message,
+        sha,
+        merge_method,
+      } = req.body as {
+        owner: string
+        repo: string
+        pull_number: number
+        commit_title?: string
+        commit_message?: string
+        sha?: string
+        merge_method?: "merge" | "squash" | "rebase"
+      }
+  
+      if (!owner || !repo || !pull_number) {
+        res.status(400).json({ success: false, message: "owner, repo, and pull_number are required" })
+        return
+      }
+  
+      let githubToken = (req.user as any)?.accessToken as string | undefined
+      if (!githubToken) {
+        githubToken = process.env.GITHUB_ISSUE_CREATION
+      }
+  
+      if (!githubToken) {
+        res.status(403).json({ success: false, message: "No GitHub token available to merge PR" })
+        return
+      }
+  
+      const result = await mergePullRequestAsUser(
+        githubToken,
+        owner,
+        repo,
+        pull_number,
+        commit_title,
+        commit_message,
+        sha,
+        merge_method || "squash"
+      )
+  
+      res.status(200).json({ success: true, data: result })
+    } catch (err: any) {
+      console.error("Error merging PR:", err)
+      res.status(500).json({ success: false, message: err.message })
+    }
+  }
+  
+  export const getMaintainerIssueById: RequestHandler = async (req, res) => {
+    try {
+      const { id } = req.query as { id?: string }
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          message: "Query parameter `id` is required",
+        })
+        return
+      }
+  
+      const numericId = Number(id)
+      if (Number.isNaN(numericId)) {
+        res.status(400).json({
+          success: false,
+          message: "`id` must be a number",
+        })
+        return
+      }
+  
+      const issue = await MaintainerIssue.findOne({ id: numericId })
+      if (!issue) {
+        res.status(404).json({
+          success: false,
+          message: `No ingested issue found with GitHub id ${numericId}`,
+        })
+        return
+      }
+  
+      res.status(200).json({ success: true, data: issue })
+      return
+    } catch (err: any) {
+      console.error("Error fetching issue by id:", err)
+      res.status(500).json({ success: false, message: err.message })
+      return
+    }
+  }
 
 router.get("/orgs-by-username", getOrgsByUsername);
 router.get("/repos-by-username", getReposByUsername); // <-- Register your new route
@@ -193,5 +284,7 @@ router.post("/create-issue", createIssue);
 router.post("/ingest-issue", ingestIssue);
 router.get("/repo-pulls", getRepoPullRequests);
 router.get("/issue-by-number", getIssueByNumber);
+router.post("/merge-pr", mergePullRequest);
+router.get("/issue-by-id", getMaintainerIssueById)
 
 export default router;

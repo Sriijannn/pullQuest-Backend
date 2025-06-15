@@ -257,6 +257,7 @@ export async function listUserRepos(
       throw new Error(error.message || "Unknown GitHub error");
     }
   }
+
   export const getIssueByNumber: RequestHandler = async (req, res) => {
     try {
       const { owner, repo, number } = req.query as {
@@ -330,3 +331,62 @@ export async function listUserRepos(
       });
     }
   };
+
+  export async function mergePullRequestAsUser(
+    githubToken: string,
+    owner: string,
+    repo: string,
+    pull_number: number,
+    commit_title?: string,
+    commit_message?: string,
+    sha?: string,
+    merge_method: "merge" | "squash" | "rebase" = "squash"
+  ): Promise<any> {
+    if (!githubToken) throw new Error("User GitHub token is required")
+    if (!owner || !repo) throw new Error("Owner and repo are required")
+    if (!pull_number) throw new Error("Pull request number is required")
+  
+    const octokit = new Octokit({
+      auth: githubToken,
+      userAgent: "PullQuest-MergePR/1.0.0",
+    })
+  
+    try {
+      const response = await octokit.request("PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge", {
+        owner,
+        repo,
+        pull_number,
+        commit_title,
+        commit_message,
+        sha,
+        merge_method,
+        headers: {
+          "Accept": "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      })
+  
+      return response.data // contains { merged, message, sha }
+    } catch (error: any) {
+      console.error("GitHub API Error (merge PR):", error)
+  
+      if (error.status === 403) {
+        throw new Error("Forbidden: Check token scopes or rate limiting")
+      }
+      if (error.status === 404) {
+        throw new Error("Pull request not found")
+      }
+      if (error.status === 405) {
+        throw new Error("Merge cannot be performed")
+      }
+      if (error.status === 409) {
+        throw new Error("Conflict: PR head SHA mismatch")
+      }
+      if (error.status === 422) {
+        throw new Error("Validation failed or endpoint spammed")
+      }
+  
+      throw new Error(error.message || "Unknown GitHub error")
+    }
+  }
+  

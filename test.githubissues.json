@@ -1,370 +1,100 @@
 [{
   "_id": {
-    "$oid": "6847061e2cbcc695e282a876"
+    "$oid": "684e1c2764df81ced8acd7f6"
   },
-  "githubUsername": "octocat",
-  "userId": {
-    "$oid": "6847038d1a1138982e201b9d"
+  "id": 3146944145,
+  "number": 11,
+  "title": "Testing ",
+  "body": "import { RequestHandler } from \"express\";\nimport User from \"../model/User\";\nimport { Octokit } from \"@octokit/rest\";\nimport MaintainerIssue from \"../model/MaintainerIssue\"; // Import the new model\nimport mongoose from \"mongoose\";\n\nexport const ingestIssue: RequestHandler = async (req, res) => {\n  try {\n    const {\n      userId,\n      githubUsername,\n      repository,\n      issue: gh,\n      stakingRequired,\n      userAccessToken,\n      // Additional fields for bounty/staking\n      difficulty,\n      estimatedHours,\n      bounty,\n      xpReward,\n      expirationDate,\n    } = req.body as {\n      userId?: string;\n      githubUsername: string;\n      repository: { owner: string; repo: string };\n      issue: any;\n      stakingRequired?: number;\n      userAccessToken?: string;\n      difficulty?: string;\n      estimatedHours?: number;\n      bounty?: number;\n      xpReward?: number;\n      expirationDate?: string;\n    };\n\n    console.log(\"Ingest request body:\", {\n      hasUserId: !!userId,\n      hasGithubUsername: !!githubUsername,\n      hasRepository: !!repository,\n      hasIssue: !!gh,\n      repository,\n      githubUsername,\n      stakingRequired,\n      issueId: gh?.id,\n      issueNumber: gh?.number,\n    });\n\n    // Add validation\n    if (!gh || !githubUsername || !repository) {\n      console.error(\"Missing required fields:\", {\n        githubUsername: !!githubUsername,\n        repository: !!repository,\n        issue: !!gh\n      });\n      res.status(400).json({ \n        success: false, \n        message: \"Missing required fields: githubUsername, repository, or issue data\" \n      });\n      return;\n    }\n\n    // Validate issue ID\n    if (!gh.id || !gh.number) {\n      console.error(\"Invalid issue data: missing id or number\");\n      res.status(400).json({ \n        success: false, \n        message: \"Invalid issue data: missing id or number\" \n      });\n      return;\n    }\n\n    // 1) Find user by githubUsername\n    console.log(`Looking up user with githubUsername: ${githubUsername}`);\n    const user = await User.findOne({ githubUsername }).select(\"_id githubUsername email role\");\n    \n    if (!user) {\n      console.error(`User not found with githubUsername: ${githubUsername}`);\n      res.status(404).json({ \n        success: false, \n        message: `User not found with GitHub username: ${githubUsername}` \n      });\n      return;\n    }\n\n    const actualUserId = (user._id as mongoose.Types.ObjectId).toString();\n    console.log(`Found user: ${actualUserId} (${user.githubUsername})`);\n\n    // 2) Check if issue already exists in MaintainerIssue collection\n    const existingIssue = await MaintainerIssue.findOne({ id: gh.id });\n    if (existingIssue) {\n      console.log(`Issue ${gh.id} already exists, updating...`);\n      \n      // Update existing issue with new data\n      const updatedIssue = await MaintainerIssue.findOneAndUpdate(\n        { id: gh.id },\n        {\n          // Update core fields that might change\n          title: gh.title || existingIssue.title,\n          body: gh.body !== undefined ? gh.body : existingIssue.body,\n          state: gh.state || existingIssue.state,\n          updatedAt: gh.updated_at ? new Date(gh.updated_at) : new Date(),\n          closedAt: gh.closed_at ? new Date(gh.closed_at) : existingIssue.closedAt,\n          commentsCount: gh.comments !== undefined ? gh.comments : existingIssue.commentsCount,\n          \n          // Update bounty/staking fields if provided\n          ...(stakingRequired !== undefined && { stakingRequired }),\n          ...(difficulty && { difficulty }),\n          ...(estimatedHours !== undefined && { estimatedHours }),\n          ...(bounty !== undefined && { bounty }),\n          ...(xpReward !== undefined && { xpReward }),\n          ...(expirationDate && { expirationDate: new Date(expirationDate) }),\n          \n          // Update labels and assignees\n          labels: (gh.labels || []).map((lbl: any) => ({\n            id: lbl?.id || 0,\n            name: lbl?.name || \"\",\n            color: lbl?.color || \"000000\",\n            description: lbl?.description || \"\",\n          })),\n          assignee: gh.assignee ? {\n            id: gh.assignee.id,\n            login: gh.assignee.login,\n            avatarUrl: gh.assignee.avatar_url || \"\",\n            htmlUrl: gh.assignee.html_url || \"\",\n            type: gh.assignee.type || \"User\",\n          } : undefined,\n          assignees: (gh.assignees || []).map((u: any) => ({\n            id: u.id,\n            login: u.login,\n            avatarUrl: u.avatar_url || \"\",\n            htmlUrl: u.html_url || \"\",\n            type: u.type || \"User\",\n          })),\n        },\n        { new: true, runValidators: true }\n      );\n\n      res.status(200).json({ \n        success: true, \n        issueId: updatedIssue!.id,\n        issueNumber: updatedIssue!.number,\n        repository: updatedIssue!.repository.fullName,\n        stakingRequired: updatedIssue!.stakingRequired,\n        message: \"Issue updated successfully\",\n        updated: true\n      });\n      return;\n    }\n\n    // 3) Fetch repository data if needed\n    let repositoryData = gh.repository;\n    if (!repositoryData && userAccessToken) {\n      try {\n        console.log(`Fetching repository data for ${repository.owner}/${repository.repo}`);\n        const octokit = new Octokit({ auth: userAccessToken });\n        const { data: repoData } = await octokit.rest.repos.get({\n          owner: repository.owner,\n          repo: repository.repo,\n        });\n        repositoryData = repoData;\n        console.log(\"Repository data fetched successfully\");\n      } catch (repoError: any) {\n        console.warn(\"Could not fetch repository data:\", repoError.message);\n      }\n    }\n\n    // 4) Create new MaintainerIssue document\n    const newMaintainerIssue = new MaintainerIssue({\n      // Core issue fields\n      id: gh.id,\n      number: gh.number,\n      title: gh.title || \"Untitled Issue\",\n      body: gh.body || \"\",\n      state: gh.state || \"open\",\n      htmlUrl: gh.html_url || \"\",\n      \n      // User fields\n      user: gh.user ? {\n        id: gh.user.id,\n        login: gh.user.login,\n        avatarUrl: gh.user.avatar_url || \"\",\n        htmlUrl: gh.user.html_url || \"\",\n        type: gh.user.type || \"User\",\n      } : {\n        id: 0,\n        login: \"unknown\",\n        avatarUrl: \"\",\n        htmlUrl: \"\",\n        type: \"User\",\n      },\n      \n      // Labels\n      labels: (gh.labels || []).map((lbl: any) => ({\n        id: lbl?.id || 0,\n        name: lbl?.name || \"\",\n        color: lbl?.color || \"000000\",\n        description: lbl?.description || \"\",\n      })),\n      \n      // Assignee and assignees\n      assignee: gh.assignee ? {\n        id: gh.assignee.id,\n        login: gh.assignee.login,\n        avatarUrl: gh.assignee.avatar_url || \"\",\n        htmlUrl: gh.assignee.html_url || \"\",\n        type: gh.assignee.type || \"User\",\n      } : undefined,\n      \n      assignees: (gh.assignees || []).map((u: any) => ({\n        id: u.id,\n        login: u.login,\n        avatarUrl: u.avatar_url || \"\",\n        htmlUrl: u.html_url || \"\",\n        type: u.type || \"User\",\n      })),\n      \n      // Milestone\n      milestone: gh.milestone ? {\n        id: gh.milestone.id,\n        title: gh.milestone.title || \"\",\n        description: gh.milestone.description || \"\",\n        state: gh.milestone.state || \"open\",\n        dueOn: gh.milestone.due_on ? new Date(gh.milestone.due_on) : undefined,\n      } : undefined,\n      \n      // Repository data\n      repository: repositoryData ? {\n        id: repositoryData.id,\n        name: repositoryData.name,\n        fullName: repositoryData.full_name || `${repository.owner}/${repository.repo}`,\n        htmlUrl: repositoryData.html_url || `https://github.com/${repository.owner}/${repository.repo}`,\n        language: repositoryData.language || \"\",\n        stargazersCount: repositoryData.stargazers_count || 0,\n        forksCount: repositoryData.forks_count || 0,\n        description: repositoryData.description || \"\",\n      } : {\n        id: 0,\n        name: repository.repo,\n        fullName: `${repository.owner}/${repository.repo}`,\n        htmlUrl: `https://github.com/${repository.owner}/${repository.repo}`,\n        language: \"\",\n        stargazersCount: 0,\n        forksCount: 0,\n        description: \"\",\n      },\n      \n      // Counts and timestamps\n      commentsCount: gh.comments || 0,\n      createdAt: gh.created_at ? new Date(gh.created_at) : new Date(),\n      updatedAt: gh.updated_at ? new Date(gh.updated_at) : new Date(),\n      closedAt: gh.closed_at ? new Date(gh.closed_at) : undefined,\n      \n      // GitHub specific\n      authorAssociation: gh.author_association || \"NONE\",\n      \n      // Bounty/Staking fields\n      difficulty: difficulty,\n      estimatedHours: estimatedHours,\n      bounty: bounty,\n      xpReward: xpReward,\n      stakingRequired: stakingRequired || 0,\n      expirationDate: expirationDate ? new Date(expirationDate) : undefined,\n    });\n\n    // 5) Save the new MaintainerIssue\n    const savedIssue = await newMaintainerIssue.save();\n    console.log(\"✅ New MaintainerIssue created:\", savedIssue.id);\n\n    // Issue successfully saved to MaintainerIssue collection\n\n    console.log(\"✅ Issue ingested successfully:\", {\n      userId: actualUserId,\n      issueId: savedIssue.id,\n      issueNumber: savedIssue.number,\n      issueTitle: savedIssue.title,\n      repository: savedIssue.repository.fullName,\n      stakingRequired: savedIssue.stakingRequired,\n    });\n\n    res.status(201).json({ \n      success: true, \n      issueId: savedIssue.id,\n      issueNumber: savedIssue.number,\n      repository: savedIssue.repository.fullName,\n      stakingRequired: savedIssue.stakingRequired,\n      difficulty: savedIssue.difficulty,\n      bounty: savedIssue.bounty,\n      xpReward: savedIssue.xpReward,\n      message: \"Issue ingested successfully\",\n      created: true\n    });\n    \n  } catch (err: any) {\n    console.error(\"❌ Error ingesting issue:\", err);\n    \n    // Handle mongoose validation errors\n    if (err.name === 'ValidationError') {\n      const validationErrors = Object.values(err.errors).map((e: any) => e.message);\n      res.status(400).json({ \n        success: false, \n        message: \"Validation error\", \n        errors: validationErrors \n      });\n      return;\n    }\n    \n    // Handle duplicate key errors\n    if (err.code === 11000) {\n      res.status(409).json({ \n        success: false, \n        message: \"Issue already exists with this ID\" \n      });\n      return;\n    }\n    \n    res.status(500).json({ success: false, message: err.message });\n  }\n};",
+  "state": "open",
+  "htmlUrl": "https://github.com/NishantSinghhhhh/ai-content-generator-/issues/11",
+  "user": {
+    "id": 151461374,
+    "login": "NishantSinghhhhh",
+    "avatarUrl": "https://avatars.githubusercontent.com/u/151461374?v=4",
+    "htmlUrl": "https://github.com/NishantSinghhhhh",
+    "type": "User"
   },
-  "__v": 0,
-  "createdAt": {
-    "$date": "2025-06-09T16:04:46.297Z"
-  },
-  "filters": {
-    "languages": [
-      "Ruby",
-      "CSS",
-      "HTML",
-      "Shell",
-      "JavaScript"
-    ],
-    "labels": [],
-    "minStars": 10
-  },
-  "lastFetched": {
-    "$date": "2025-06-09T16:04:46.296Z"
-  },
-  "suggestedIssues": [],
-  "updatedAt": {
-    "$date": "2025-06-09T16:04:46.297Z"
-  },
-  "userTopLanguages": [
-    "Ruby",
-    "CSS",
-    "HTML",
-    "Shell",
-    "JavaScript"
-  ]
-},
-{
-  "_id": {
-    "$oid": "684726292cbcc695e282a8b5"
-  },
-  "githubUsername": "ArunKushhhh",
-  "userId": {
-    "$oid": "6847038d1a1138982e201b9d"
-  },
-  "__v": 0,
-  "createdAt": {
-    "$date": "2025-06-09T18:21:29.712Z"
-  },
-  "filters": {
-    "languages": [
-      "Python",
-      "JavaScript",
-      "HTML",
-      "TypeScript",
-      "CSS"
-    ],
-    "labels": [],
-    "minStars": 10
-  },
-  "lastFetched": {
-    "$date": "2025-06-09T18:21:29.711Z"
-  },
-  "suggestedIssues": [],
-  "updatedAt": {
-    "$date": "2025-06-09T18:21:29.712Z"
-  },
-  "userTopLanguages": [
-    "Python",
-    "JavaScript",
-    "HTML",
-    "TypeScript",
-    "CSS"
-  ]
-},
-{
-  "_id": {
-    "$oid": "684e1371abc8f5e0a7c4655f"
-  },
-  "userId": {
-    "$oid": "684d1622f83fa91c29a332c7"
-  },
-  "githubUsername": "NishantSinghhhhh",
-  "suggestedIssues": [
+  "assignees": [],
+  "labels": [
     {
-      "id": 3146919188,
-      "number": 3,
-      "title": "Test",
-      "body": "Test",
-      "state": "open",
-      "htmlUrl": "https://github.com/NishantSinghhhhh/AIT-Cycling-Club-Website/issues/3",
-      "user": {
-        "id": 151461374,
-        "login": "NishantSinghhhhh",
-        "avatarUrl": "https://avatars.githubusercontent.com/u/151461374?v=4",
-        "htmlUrl": "https://github.com/NishantSinghhhhh",
-        "type": "User",
-        "_id": {
-          "$oid": "684e1371abc8f5e0a7c46561"
-        }
-      },
-      "labels": [
-        {
-          "id": 6564233691,
-          "name": "enhancement",
-          "color": "a2eeef",
-          "description": "New feature or request",
-          "_id": {
-            "$oid": "684e1371abc8f5e0a7c46562"
-          }
-        }
-      ],
-      "assignees": [],
-      "commentsCount": 0,
-      "createdAt": {
-        "$date": "2025-06-15T00:27:30.000Z"
-      },
-      "updatedAt": {
-        "$date": "2025-06-15T00:27:30.000Z"
-      },
-      "authorAssociation": "OWNER",
-      "repository": {
-        "id": 0,
-        "name": "AIT-Cycling-Club-Website",
-        "fullName": "NishantSinghhhhh/AIT-Cycling-Club-Website",
-        "htmlUrl": "https://github.com/NishantSinghhhhh/AIT-Cycling-Club-Website",
-        "language": "",
-        "stargazersCount": 0,
-        "forksCount": 0,
-        "description": ""
-      },
-      "_id": {
-        "$oid": "684e1371abc8f5e0a7c46560"
-      }
+      "id": 7153370945,
+      "name": "enhancement",
+      "color": "a2eeef",
+      "description": "New feature or request"
     },
     {
-      "id": 3146920069,
-      "number": 13,
-      "title": "Test",
-      "body": "Test",
-      "state": "open",
-      "htmlUrl": "https://github.com/NishantSinghhhhh/AI-Shala/issues/13",
-      "user": {
-        "id": 151461374,
-        "login": "NishantSinghhhhh",
-        "avatarUrl": "https://avatars.githubusercontent.com/u/151461374?v=4",
-        "htmlUrl": "https://github.com/NishantSinghhhhh",
-        "type": "User",
-        "_id": {
-          "$oid": "684e13c5abc8f5e0a7c4656b"
-        }
-      },
-      "labels": [],
-      "assignees": [],
-      "commentsCount": 0,
-      "createdAt": {
-        "$date": "2025-06-15T00:28:54.000Z"
-      },
-      "updatedAt": {
-        "$date": "2025-06-15T00:28:54.000Z"
-      },
-      "authorAssociation": "OWNER",
-      "repository": {
-        "id": 0,
-        "name": "AI-Shala",
-        "fullName": "NishantSinghhhhh/AI-Shala",
-        "htmlUrl": "https://github.com/NishantSinghhhhh/AI-Shala",
-        "language": "",
-        "stargazersCount": 0,
-        "forksCount": 0,
-        "description": ""
-      },
-      "_id": {
-        "$oid": "684e13c5abc8f5e0a7c4656a"
-      }
-    },
-    {
-      "id": 3146926606,
-      "number": 14,
-      "title": "Testing 2",
-      "body": "Testing 2",
-      "state": "open",
-      "htmlUrl": "https://github.com/NishantSinghhhhh/AI-Shala/issues/14",
-      "user": {
-        "id": 151461374,
-        "login": "NishantSinghhhhh",
-        "avatarUrl": "https://avatars.githubusercontent.com/u/151461374?v=4",
-        "htmlUrl": "https://github.com/NishantSinghhhhh",
-        "type": "User",
-        "_id": {
-          "$oid": "684e160205446a19653b1fa8"
-        }
-      },
-      "labels": [
-        {
-          "id": 8127568544,
-          "name": "enhancement",
-          "color": "a2eeef",
-          "description": "New feature or request",
-          "_id": {
-            "$oid": "684e160205446a19653b1fa9"
-          }
-        }
-      ],
-      "assignees": [],
-      "commentsCount": 0,
-      "createdAt": {
-        "$date": "2025-06-15T00:38:27.000Z"
-      },
-      "updatedAt": {
-        "$date": "2025-06-15T00:38:27.000Z"
-      },
-      "authorAssociation": "OWNER",
-      "repository": {
-        "id": 0,
-        "name": "AI-Shala",
-        "fullName": "NishantSinghhhhh/AI-Shala",
-        "htmlUrl": "https://github.com/NishantSinghhhhh/AI-Shala",
-        "language": "",
-        "stargazersCount": 0,
-        "forksCount": 0,
-        "description": ""
-      },
-      "stakingRequired": 25,
-      "_id": {
-        "$oid": "684e160205446a19653b1fa7"
-      }
-    },
-    {
-      "id": 3146928906,
-      "number": 3,
-      "title": "Testing ",
-      "body": "Testing ",
-      "state": "open",
-      "htmlUrl": "https://github.com/NishantSinghhhhh/AIT-Cycling-Club/issues/3",
-      "user": {
-        "id": 151461374,
-        "login": "NishantSinghhhhh",
-        "avatarUrl": "https://avatars.githubusercontent.com/u/151461374?v=4",
-        "htmlUrl": "https://github.com/NishantSinghhhhh",
-        "type": "User",
-        "_id": {
-          "$oid": "684e16bc6ea68e3a5b9cfc1e"
-        }
-      },
-      "labels": [
-        {
-          "id": 6376942233,
-          "name": "documentation",
-          "color": "0075ca",
-          "description": "Improvements or additions to documentation",
-          "_id": {
-            "$oid": "684e16bc6ea68e3a5b9cfc1f"
-          }
-        },
-        {
-          "id": 6376942255,
-          "name": "question",
-          "color": "d876e3",
-          "description": "Further information is requested",
-          "_id": {
-            "$oid": "684e16bc6ea68e3a5b9cfc20"
-          }
-        }
-      ],
-      "assignees": [],
-      "commentsCount": 0,
-      "createdAt": {
-        "$date": "2025-06-15T00:41:33.000Z"
-      },
-      "updatedAt": {
-        "$date": "2025-06-15T00:41:33.000Z"
-      },
-      "authorAssociation": "OWNER",
-      "repository": {
-        "id": 0,
-        "name": "AIT-Cycling-Club",
-        "fullName": "NishantSinghhhhh/AIT-Cycling-Club",
-        "htmlUrl": "https://github.com/NishantSinghhhhh/AIT-Cycling-Club",
-        "language": "",
-        "stargazersCount": 0,
-        "forksCount": 0,
-        "description": ""
-      },
-      "stakingRequired": 0,
-      "_id": {
-        "$oid": "684e16bc6ea68e3a5b9cfc1d"
-      }
-    },
-    {
-      "id": 3146933333,
-      "number": 15,
-      "title": "New Test",
-      "body": "New Test",
-      "state": "open",
-      "htmlUrl": "https://github.com/NishantSinghhhhh/AI-Shala/issues/15",
-      "user": {
-        "id": 151461374,
-        "login": "NishantSinghhhhh",
-        "avatarUrl": "https://avatars.githubusercontent.com/u/151461374?v=4",
-        "htmlUrl": "https://github.com/NishantSinghhhhh",
-        "type": "User",
-        "_id": {
-          "$oid": "684e184e6ea68e3a5b9cfc2d"
-        }
-      },
-      "labels": [
-        {
-          "id": 8127568520,
-          "name": "documentation",
-          "color": "0075ca",
-          "description": "Improvements or additions to documentation",
-          "_id": {
-            "$oid": "684e184e6ea68e3a5b9cfc2e"
-          }
-        },
-        {
-          "id": 8127568578,
-          "name": "question",
-          "color": "d876e3",
-          "description": "Further information is requested",
-          "_id": {
-            "$oid": "684e184e6ea68e3a5b9cfc2f"
-          }
-        }
-      ],
-      "assignees": [],
-      "commentsCount": 0,
-      "createdAt": {
-        "$date": "2025-06-15T00:48:15.000Z"
-      },
-      "updatedAt": {
-        "$date": "2025-06-15T00:48:15.000Z"
-      },
-      "authorAssociation": "OWNER",
-      "repository": {
-        "id": 0,
-        "name": "AI-Shala",
-        "fullName": "NishantSinghhhhh/AI-Shala",
-        "htmlUrl": "https://github.com/NishantSinghhhhh/AI-Shala",
-        "language": "",
-        "stargazersCount": 0,
-        "forksCount": 0,
-        "description": ""
-      },
-      "stakingRequired": 26,
-      "_id": {
-        "$oid": "684e184e6ea68e3a5b9cfc2c"
-      }
+      "id": 7153370968,
+      "name": "question",
+      "color": "d876e3",
+      "description": "Further information is requested"
     }
   ],
-  "userTopLanguages": [],
-  "userOrganizations": [],
-  "filters": {
-    "languages": [],
-    "labels": [],
-    "minStars": 0
+  "repository": {
+    "id": 0,
+    "name": "ai-content-generator-",
+    "fullName": "NishantSinghhhhh/ai-content-generator-",
+    "htmlUrl": "https://github.com/NishantSinghhhhh/ai-content-generator-",
+    "language": "",
+    "stargazersCount": 0,
+    "forksCount": 0,
+    "description": ""
   },
-  "lastFetched": {
-    "$date": "2025-06-15T00:27:29.199Z"
-  },
+  "commentsCount": 0,
   "createdAt": {
-    "$date": "2025-06-15T00:27:29.204Z"
+    "$date": "2025-06-15T01:04:39.000Z"
   },
   "updatedAt": {
-    "$date": "2025-06-15T00:48:14.337Z"
+    "$date": "2025-06-15T01:04:39.000Z"
   },
-  "__v": 4
+  "authorAssociation": "OWNER",
+  "stakingRequired": 25,
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "684e1c5a64df81ced8acd7fa"
+  },
+  "id": 3146945298,
+  "number": 16,
+  "title": "Testing ",
+  "body": "Testing ",
+  "state": "open",
+  "htmlUrl": "https://github.com/NishantSinghhhhh/AI-Shala/issues/16",
+  "user": {
+    "id": 151461374,
+    "login": "NishantSinghhhhh",
+    "avatarUrl": "https://avatars.githubusercontent.com/u/151461374?v=4",
+    "htmlUrl": "https://github.com/NishantSinghhhhh",
+    "type": "User"
+  },
+  "assignees": [],
+  "labels": [
+    {
+      "id": 8127568520,
+      "name": "documentation",
+      "color": "0075ca",
+      "description": "Improvements or additions to documentation"
+    }
+  ],
+  "repository": {
+    "id": 0,
+    "name": "AI-Shala",
+    "fullName": "NishantSinghhhhh/AI-Shala",
+    "htmlUrl": "https://github.com/NishantSinghhhhh/AI-Shala",
+    "language": "",
+    "stargazersCount": 0,
+    "forksCount": 0,
+    "description": ""
+  },
+  "commentsCount": 0,
+  "createdAt": {
+    "$date": "2025-06-15T01:05:29.000Z"
+  },
+  "updatedAt": {
+    "$date": "2025-06-15T01:05:29.000Z"
+  },
+  "authorAssociation": "OWNER",
+  "stakingRequired": 23,
+  "__v": 0
 }]
